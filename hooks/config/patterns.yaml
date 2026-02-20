@@ -1,0 +1,110 @@
+command_injection:
+  - pattern: '\$\([^)]+\)'
+    severity: high
+    description: "Command substitution"
+  - pattern: '`[^`]+`'
+    severity: high
+    description: "Backtick command execution"
+  - pattern: ';\s*\w+'
+    severity: medium
+    description: "Command chaining with semicolon"
+  - pattern: '\|\s*\w+'
+    severity: medium
+    description: "Pipe to another command"
+  - pattern: '&&|\|\|'
+    severity: medium
+    description: "Logical operators"
+  - pattern: '>\s*/dev/'
+    severity: high
+    description: "Redirect to device file"
+  - pattern: '\$\{[^}]+\}'
+    severity: medium
+    description: "Variable expansion"
+
+path_traversal:
+  - pattern: '\.\.[/\\]'
+    severity: high
+    description: "Parent directory traversal"
+  - pattern: '^[A-Z]:\\Windows\\System32'
+    severity: critical
+    description: "Windows system directory"
+  - pattern: '^/(etc|sys|proc|dev)/'
+    severity: critical
+    description: "Linux system directory"
+  - pattern: '\.\.\\|\.\./'
+    severity: high
+    description: "Directory traversal"
+
+credentials:
+  - pattern: '(?i)(api[_-]?key|apikey)\s*[:=]\s*[\w\-]{20,}'
+    severity: critical
+    description: "API key"
+  - pattern: '(?i)(password|passwd|pwd)\s*[:=]\s*\S{8,}'
+    severity: critical
+    description: "Password"
+  - pattern: '(?i)(token|bearer)\s*[:=]\s*[\w\-\.]{20,}'
+    severity: critical
+    description: "Auth token"
+  - pattern: '-----BEGIN (RSA |DSA |EC |OPENSSH |)PRIVATE KEY-----'
+    severity: critical
+    description: "Private key"
+  - pattern: '(?i)(secret|secret[_-]?key)\s*[:=]\s*[\w\-]{16,}'
+    severity: critical
+    description: "Secret key"
+  - pattern: 'AKIA[0-9A-Z]{16}'
+    severity: critical
+    description: "AWS access key"
+
+dangerous_code:
+  - pattern: '\beval\s*\('
+    severity: high
+    description: "eval() function"
+  - pattern: '\bexec\s*\('
+    severity: high
+    description: "exec() function"
+  - pattern: 'os\.system\s*\('
+    severity: high
+    description: "os.system() function"
+  - pattern: 'subprocess\.(call|run|Popen)\s*\('
+    severity: medium
+    description: "subprocess execution"
+  - pattern: 'child_process\.(exec|spawn)\s*\('
+    severity: high
+    description: "child_process execution"
+  - pattern: '__import__\s*\('
+    severity: high
+    description: "Dynamic import"
+  - pattern: 'pickle\.loads?\s*\('
+    severity: high
+    description: "Pickle deserialization"
+
+sql_injection:
+  - pattern: "' OR '1'='1"
+    severity: critical
+    description: "SQL injection pattern"
+  - pattern: "UNION SELECT"
+    severity: critical
+    description: "SQL UNION attack"
+  - pattern: "; DROP TABLE"
+    severity: critical
+    description: "SQL DROP attack"
+  - pattern: "' OR 1=1--"
+    severity: critical
+    description: "SQL comment injection"
+
+xss:
+  - pattern: '<script[^>]*>'
+    severity: high
+    description: "Script tag"
+  - pattern: 'javascript:'
+    severity: high
+    description: "JavaScript protocol"
+  - pattern: 'on(load|error|click|mouseover)\s*='
+    severity: high
+    description: "Event handler"
+  - pattern: 'dangerouslySetInnerHTML'
+    severity: medium
+    description: "React dangerous HTML"
+  - pattern: '\.innerHTML\s*='
+    severity: medium
+    description: "innerHTML assignment"

@@ -1,0 +1,74 @@
+permissions:
+  allowed_commands:
+    git:
+      - status
+      - diff
+      - log
+      - add
+      - commit
+      - push
+      - pull
+      - clone
+      - branch
+      - checkout
+    npm:
+      - install
+      - test
+      - run
+      - start
+      - build
+      - ci
+    python:
+      - "*.py"
+      - "-m pytest"
+      - "-m pip"
+    pip:
+      - install
+      - list
+      - show
+      - freeze
+    docker:
+      - ps
+      - images
+      - logs
+      - exec
+    ls:
+      - "*"
+    cat:
+      - "*"
+    echo:
+      - "*"
+    cd:
+      - "*"
+    pwd:
+      - "*"
+    mkdir:
+      - "*"
+
+  blocked_paths:
+    - "C:\\Windows\\System32\\**"
+    - "C:\\Windows\\SysWOW64\\**"
+    - "C:\\Program Files\\**"
+    - "C:\\ProgramData\\**"
+    - "/etc/**"
+    - "/sys/**"
+    - "/proc/**"
+    - "/dev/**"
+    - "**/.env"
+    - "**/.env.*"
+    - "**/.git/config"
+    - "**/*secret*"
+    - "**/*password*"
+    - "**/.ssh/**"
+    - "**/id_rsa"
+    - "**/id_rsa.pub"
+    - "**/*.pem"
+    - "**/*.key"
+
+  allowed_write_dirs:
+    - "${CLAUDE_PROJECT_DIR}/**"
+    - "C:\\Users\\jiang\\**"
+    - "!**/.git/**"
+    - "!**/node_modules/**"
+    - "!**/venv/**"
+    - "!**/__pycache__/**"
