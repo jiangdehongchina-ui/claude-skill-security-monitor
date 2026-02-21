@@ -4,6 +4,7 @@ Configuration Validator - 配置文件验证工具
 """
 import sys
 import json
+import re
 import yaml
 from pathlib import Path
 
@@ -68,7 +69,8 @@ def validate_patterns(data):
         return False
 
     errors = []
-    pattern_types = ["command_injection", "path_traversal", "credentials", "dangerous_code"]
+    pattern_types = ["command_injection", "path_traversal", "credentials",
+                      "dangerous_code", "sql_injection", "xss", "data_exfiltration"]
 
     for ptype in pattern_types:
         if ptype not in data:
@@ -81,6 +83,12 @@ def validate_patterns(data):
                 for i, p in enumerate(patterns):
                     if "pattern" not in p:
                         errors.append(f"{ptype}[{i}]: Missing 'pattern' field")
+                    else:
+                        # 验证正则语法
+                        try:
+                            re.compile(p["pattern"])
+                        except re.error as e:
+                            errors.append(f"{ptype}[{i}]: Invalid regex '{p['pattern']}': {e}")
                     if "severity" not in p:
                         errors.append(f"{ptype}[{i}]: Missing 'severity' field")
                     if "description" not in p:

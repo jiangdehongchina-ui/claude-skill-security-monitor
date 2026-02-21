@@ -96,6 +96,14 @@ def main():
     elapsed = (time.time() - start_time) * 1000
 
     # 5. 处理结果
+    # 构建 details 摘要（用于事后分析误报）
+    details = {}
+    if tool_name == "Bash":
+        cmd = tool_input.get("command", "")
+        details["command"] = cmd[:200] + ("..." if len(cmd) > 200 else "")
+    elif tool_name in ("Write", "Edit"):
+        details["file_path"] = tool_input.get("file_path", "")
+
     if result.passed:
         AuditLogger.log_event(session_id, tool_name, "allow", result.reason,
                               execution_time=elapsed)
@@ -104,6 +112,7 @@ def main():
         AuditLogger.log_event(session_id, tool_name, "deny", result.reason,
                               severity=result.severity,
                               violation_type=result.violation_type,
+                              details=details,
                               execution_time=elapsed)
         print(f"Security Monitor [{result.layer}]: {result.reason}",
               file=sys.stderr)

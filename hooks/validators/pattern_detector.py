@@ -24,6 +24,11 @@ class PatternDetector(BaseValidator):
         params = hook_input.tool_input
         patterns = self.config.get("patterns", {})
 
+        # Write/Edit 时跳过 dangerous_code 类别（写代码中 eval/exec 是正常的）
+        skip_categories = set()
+        if tool in ("Write", "Edit"):
+            skip_categories.add("dangerous_code")
+
         # 收集需要扫描的文本
         texts_to_scan = []
         if tool == "Bash":
@@ -38,15 +43,21 @@ class PatternDetector(BaseValidator):
         for text in texts_to_scan:
             if not text:
                 continue
-            result = self._scan_patterns(text, patterns)
+            result = self._scan_patterns(text, patterns, skip_categories)
             if result:
                 return result
 
         return ValidationResult(passed=True, layer=self.layer_name)
 
-    def _scan_patterns(self, text: str, patterns: dict) -> ValidationResult | None:
+    def _scan_patterns(self, text: str, patterns: dict,
+                       skip_categories: set = None) -> ValidationResult | None:
         """扫描文本中的危险模式"""
+        if skip_categories is None:
+            skip_categories = set()
+
         for category, rules in patterns.items():
+            if category in skip_categories:
+                continue
             if not isinstance(rules, list):
                 continue
             for rule in rules:

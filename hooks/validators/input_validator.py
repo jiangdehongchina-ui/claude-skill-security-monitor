@@ -55,28 +55,25 @@ class InputValidator(BaseValidator):
         return text
 
     def _check_command_injection(self, cmd: str) -> ValidationResult | None:
-        """检测命令注入"""
+        """检测命令注入 — 仅拦截真正危险的模式，不拦截正常 shell 语法"""
         injection_patterns = [
-            (r'\$\([^)]+\)', "Command substitution $()"),
-            (r'`[^`]+`', "Backtick command execution"),
-            (r';\s*\w+', "Command chaining with semicolon"),
-            (r'\|\s*\w+', "Pipe to another command"),
-            (r'&&|\|\|', "Logical operator chaining"),
-            (r'>\s*/dev/', "Redirect to device file"),
-            (r'\$\{[^}]+\}', "Variable expansion"),
-            # 新增：高级绕过检测
-            (r'\$\\\(', "Escaped command substitution"),
-            (r'\\x[0-9a-f]{2}', "Hex-encoded characters"),
-            (r'base64\s+(--)?decode', "Base64 decode execution"),
+            # 远程代码执行
             (r'curl\s+.*\|\s*(ba)?sh', "Curl pipe to shell"),
             (r'wget\s+.*-O\s*-\s*\|', "Wget pipe to command"),
-            (r'python[23]?\s+-c\s+', "Python inline execution"),
-            (r'perl\s+-e\s+', "Perl inline execution"),
-            (r'ruby\s+-e\s+', "Ruby inline execution"),
+            # 反向 shell
             (r'nc\s+-[elp]', "Netcat listener/connection"),
             (r'ncat\s+', "Ncat connection"),
-            (r'mkfifo\s+', "Named pipe creation"),
             (r'/dev/tcp/', "Bash TCP device"),
+            (r'mkfifo\s+', "Named pipe creation"),
+            # 编码绕过
+            (r'base64\s+(--)?decode', "Base64 decode execution"),
+            (r'\\x[0-9a-f]{2}', "Hex-encoded characters"),
+            (r'\$\\\(', "Escaped command substitution"),
+            # 设备文件
+            (r'>\s*/dev/', "Redirect to device file"),
+            # 命令替换（保留，有真实风险）
+            (r'\$\([^)]+\)', "Command substitution $()"),
+            (r'`[^`]+`', "Backtick command execution"),
         ]
         for pattern, desc in injection_patterns:
             if _compile(pattern).search(cmd):

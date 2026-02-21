@@ -57,7 +57,7 @@ ORIGINAL_TESTS = [
         "name": "Command injection - should block",
         "input": make_input(command="ls; rm -rf /"),
         "expected_exit": 2,
-        "expected_stderr_contains": "Command injection",
+        "expected_stderr_contains": "not in whitelist",
     },
     {
         "name": "Path traversal - should block",
@@ -120,7 +120,7 @@ LAYER_TESTS = [
         "name": "L1: Zero-width character injection in command",
         "input": make_input(command="ls;\u200brm -rf /"),
         "expected_exit": 2,
-        "expected_stderr_contains": "Command injection",
+        "expected_stderr_contains": "not in whitelist",
     },
     {
         "name": "L1: Backtick command execution",
@@ -135,10 +135,10 @@ LAYER_TESTS = [
         "expected_stderr_contains": "Command injection",
     },
     {
-        "name": "L1: Variable expansion ${}",
+        "name": "L1: Variable expansion ${} - now allowed (normal shell)",
         "input": make_input(command="echo ${HOME}"),
-        "expected_exit": 2,
-        "expected_stderr_contains": "Command injection",
+        "expected_exit": 0,
+        "expected_stderr_contains": None,
     },
     {
         "name": "L1: Redirect to device file",
@@ -253,11 +253,11 @@ LAYER_TESTS = [
         "expected_stderr_contains": "xss",
     },
     {
-        "name": "L3: eval() in written code",
+        "name": "L3: eval() in written code - allowed (context-aware)",
         "input": make_input("Write", file_path="app.py",
                             content='result = eval(user_input)'),
-        "expected_exit": 2,
-        "expected_stderr_contains": "dangerous_code",
+        "expected_exit": 0,
+        "expected_stderr_contains": None,
     },
     {
         "name": "L3: Private key in content",
@@ -339,6 +339,62 @@ LAYER_TESTS = [
         "input": make_input("Write", file_path="config.py",
                             content="sg = 'SG.xxTESTxxFAKExxKEYxxZ22.xxTESTxxFAKExxVALUExxPLACEHOLDERxx43charx'"),
         "expected_exit": 2,
+        "expected_stderr_contains": None,
+    },
+]
+
+# ============================================================
+# A2. False-positive regression tests (should NOT be blocked)
+# ============================================================
+
+FALSE_POSITIVE_TESTS = [
+    {
+        "name": "FP: echo with semicolon in quotes",
+        "input": make_input(command='echo "hello; world"'),
+        "expected_exit": 0,
+        "expected_stderr_contains": None,
+    },
+    {
+        "name": "FP: grep with pipe to wc",
+        "input": make_input(command="grep pattern file.txt | wc -l"),
+        "expected_exit": 0,
+        "expected_stderr_contains": None,
+    },
+    {
+        "name": "FP: npm build && npm test",
+        "input": make_input(command="npm run build && npm test"),
+        "expected_exit": 0,
+        "expected_stderr_contains": None,
+    },
+    {
+        "name": "FP: git log with format",
+        "input": make_input(command="git log --format='%H %s'"),
+        "expected_exit": 0,
+        "expected_stderr_contains": None,
+    },
+    {
+        "name": "FP: curl simple GET",
+        "input": make_input(command="curl https://example.com"),
+        "expected_exit": 0,
+        "expected_stderr_contains": None,
+    },
+    {
+        "name": "FP: curl with -sL flag",
+        "input": make_input(command="curl -sL https://example.com/api"),
+        "expected_exit": 0,
+        "expected_stderr_contains": None,
+    },
+    {
+        "name": "FP: python -c blocked by permission (not in allowed args)",
+        "input": make_input(command='python -c "print(1)"'),
+        "expected_exit": 2,
+        "expected_stderr_contains": "not in whitelist",
+    },
+    {
+        "name": "FP: Write file with eval in code",
+        "input": make_input("Write", file_path="parser.py",
+                            content="def parse(s):\n    return eval(s)"),
+        "expected_exit": 0,
         "expected_stderr_contains": None,
     },
 ]
@@ -558,6 +614,7 @@ def main():
     groups = [
         ("Original Tests", ORIGINAL_TESTS),
         ("Layer Unit Tests", LAYER_TESTS),
+        ("False-Positive Regression", FALSE_POSITIVE_TESTS),
         ("Boundary Tests", BOUNDARY_TESTS),
     ]
 

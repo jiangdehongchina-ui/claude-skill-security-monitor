@@ -5,22 +5,10 @@ command_injection:
   - pattern: '`[^`]+`'
     severity: high
     description: "Backtick command execution"
-  - pattern: ';\s*\w+'
-    severity: medium
-    description: "Command chaining with semicolon"
-  - pattern: '\|\s*\w+'
-    severity: medium
-    description: "Pipe to another command"
-  - pattern: '&&|\|\|'
-    severity: medium
-    description: "Logical operators"
   - pattern: '>\s*/dev/'
     severity: high
     description: "Redirect to device file"
-  - pattern: '\$\{[^}]+\}'
-    severity: medium
-    description: "Variable expansion"
-  # 新增：高级注入检测
+  # 高级注入检测
   - pattern: 'base64\s+(--)?decode'
     severity: high
     description: "Base64 decode execution"
@@ -39,9 +27,6 @@ command_injection:
   - pattern: 'mkfifo\s+'
     severity: high
     description: "Named pipe creation (reverse shell)"
-  - pattern: 'python[23]?\s+-c\s+'
-    severity: medium
-    description: "Python inline execution"
 
 path_traversal:
   - pattern: '\.\.[/\\]'
