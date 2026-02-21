@@ -5,7 +5,7 @@ PostToolUse Hook - 验证Write/Edit操作的结果
 import sys
 import json
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 def read_hook_input():
     """从stdin读取JSON"""
@@ -54,7 +54,7 @@ def log_event(session_id, tool_name, file_path, file_size):
     log_file = log_dir / "post_tool_events.jsonl"
 
     event = {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "session_id": session_id,
         "tool_name": tool_name,
         "file_path": file_path,

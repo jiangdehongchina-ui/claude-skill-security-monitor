@@ -11,6 +11,12 @@ permissions:
       - clone
       - branch
       - checkout
+      - merge
+      - rebase
+      - stash
+      - tag
+      - remote
+      - fetch
     npm:
       - install
       - test
@@ -18,20 +24,34 @@ permissions:
       - start
       - build
       - ci
+      - list
+      - outdated
+    npx:
+      - "*"
+    node:
+      - "*.js"
+      - "*.mjs"
+      - "--version"
     python:
       - "*.py"
       - "-m pytest"
       - "-m pip"
+      - "-m venv"
+      - "--version"
     pip:
       - install
       - list
       - show
       - freeze
+      - uninstall
     docker:
       - ps
       - images
       - logs
       - exec
+      - build
+      - run
+      - stop
     ls:
       - "*"
     cat:
@@ -44,6 +64,56 @@ permissions:
       - "*"
     mkdir:
       - "*"
+    cp:
+      - "*"
+    mv:
+      - "*"
+    touch:
+      - "*"
+    head:
+      - "*"
+    tail:
+      - "*"
+    wc:
+      - "*"
+    sort:
+      - "*"
+    grep:
+      - "*"
+    find:
+      - "*"
+    which:
+      - "*"
+    where:
+      - "*"
+    type:
+      - "*"
+    sleep:
+      - "*"
+
+  # 明确禁止的危险命令
+  blocked_commands:
+    - sudo
+    - su
+    - chmod
+    - chown
+    - chgrp
+    - mount
+    - umount
+    - fdisk
+    - mkfs
+    - dd
+    - shutdown
+    - reboot
+    - poweroff
+    - systemctl
+    - service
+    - iptables
+    - netsh
+    - reg
+    - regedit
+    - format
+    - diskpart
 
   blocked_paths:
     - "C:\\Windows\\System32\\**"
@@ -64,6 +134,10 @@ permissions:
     - "**/id_rsa.pub"
     - "**/*.pem"
     - "**/*.key"
+    - "**/.aws/credentials"
+    - "**/.azure/**"
+    - "**/.gcloud/**"
+    - "**/credentials.json"
 
   allowed_write_dirs:
     - "${CLAUDE_PROJECT_DIR}/**"

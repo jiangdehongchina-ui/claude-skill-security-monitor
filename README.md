@@ -1,39 +1,46 @@
 # Skill Security Monitoring System
 
-Claude Code技能安全监控系统 - 基于五层安全架构的实时监控方案
+Claude Code 技能安全监控系统 — 基于五层 Pipeline 架构的实时安全防护
+
+![Version](https://img.shields.io/badge/version-0.2.0-blue)
+![Python](https://img.shields.io/badge/python-3.9%2B-green)
+![License](https://img.shields.io/badge/license-MIT-brightgreen)
+![Tests](https://img.shields.io/badge/tests-61%20passed-success)
 
 ## 概述
 
-本系统为Claude Code skills提供全面的安全监控，实现五层防护策略：
+本系统为 Claude Code Skills 提供全面的安全监控，通过 PreToolUse Hook 拦截每一次工具调用，经过五层安全检测管道后决定放行或拒绝。
 
-1. **Input Validation** - 输入验证层
-2. **Permission Control** - 权限控制层
-3. **Runtime Monitoring** - 运行时监控层
-4. **Content Security** - 内容安全层
-5. **Audit and Response** - 审计响应层
+**五层防护架构：**
+
+1. **Input Validation** — 输入验证（规范化预处理 + 注入检测）
+2. **Permission Control** — 权限控制（命令白名单 + 路径黑名单）
+3. **Pattern Detection** — 模式检测（43 条正则规则）
+4. **Content Scanning** — 内容扫描（16 种云凭证 + 数据外传检测）
+5. **Audit Logging** — 审计日志（JSONL 格式 + 自动轮转）
 
 ## 特性
 
-- ✅ 修正所有Claude Code hook集成错误（stdin读取、正确字段名、hooks.json格式）
-- ✅ fail-closed安全策略（配置加载失败时拒绝执行）
-- ✅ Prompt类型hook语义分析
-- ✅ 规范化预处理防止绕过攻击
-- ✅ 命令注入、路径穿越、凭证泄露检测
-- ✅ 白名单管理系统
-- ✅ JSON Lines审计日志
+- 模块化 Pipeline 架构，每层独立可插拔
+- fail-closed 安全策略（配置异常时拒绝执行）
+- Prompt 类型 Hook 语义分析（AI 辅助判断）
+- 规范化预处理防止 URL 编码、零宽字符绕过
+- 实时终端监控 UI（彩色显示、过滤、统计）
+- 白名单管理、配置验证、完整性校验
+- 61 个测试用例，100% 通过率
 
 ## 安装
 
-### 1. 克隆到Claude插件目录
+### 1. 克隆到 Claude 插件目录
 
 ```bash
 # Windows
-cd C:\Users\jiang\.claude\plugins
-git clone <repository-url> skill-jiankong
+cd %USERPROFILE%\.claude\plugins
+git clone https://github.com/jiangdehongchina-ui/claude-skill-security-monitor.git skill-jiankong
 
 # Linux/macOS
 cd ~/.claude/plugins
-git clone <repository-url> skill-jiankong
+git clone https://github.com/jiangdehongchina-ui/claude-skill-security-monitor.git skill-jiankong
 ```
 
 ### 2. 安装依赖
@@ -43,183 +50,162 @@ cd skill-jiankong
 pip install -r requirements.txt
 ```
 
-### 3. 初始化配置
+### 3. 验证安装
 
 ```bash
-python hooks/whitelist_manager.py init
+python hooks/validate_config.py   # 配置验证
+python tests/test_hooks.py        # 运行测试
 ```
 
-### 4. 设置可执行权限（Linux/macOS）
+重启 Claude Code 会话，Hook 将自动生效。
+
+## 实时监控 UI
+
+在单独的终端窗口中启动监控界面：
 
 ```bash
-chmod +x hooks/security_check.py
-chmod +x hooks/post_write_check.py
-chmod +x hooks/whitelist_manager.py
+python monitor_ui.py
+```
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║  Skill Security Monitor                                      ║
+║  Events: 799 | Blocked: 231 | Allowed: 568 | Rate: 28.9%    ║
+╠══════════════════════════════════════════════════════════════╣
+║ TIME     │ TOOL  │ DECISION │ REASON              │ MS      ║
+║ 10:30:00 │ Bash  │   DENY   │ Command injection   │ 12.5    ║
+║ 10:30:05 │ Write │  ALLOW   │ All checks passed   │  3.2    ║
+╠══════════════════════════════════════════════════════════════╣
+║ [q]Quit [f]Filter [d]Decision [c]Clear [s]Stats [p]Pause    ║
+╚══════════════════════════════════════════════════════════════╝
+```
+
+启动参数：
+
+```bash
+python monitor_ui.py --filter-tool Bash        # 只看 Bash 事件
+python monitor_ui.py --filter-decision deny    # 只看拦截事件
+python monitor_ui.py --no-stats                # 隐藏统计面板
 ```
 
 ## 配置
 
-### permissions.yaml
-
-定义允许的命令和路径：
+### permissions.yaml — 权限规则
 
 ```yaml
 permissions:
   allowed_commands:
-    git: [status, diff, log, add, commit, push]
-    npm: [install, test, run]
-    python: ["*.py", "-m pytest"]
-
+    git: [status, diff, log, add, commit, push, pull]
+    npm: [install, test, run, build]
+    python: ["*.py", "-m pytest", "-m pip"]
+  blocked_commands: [sudo, su, chmod, dd, shutdown, reboot]
   blocked_paths:
     - "C:\\Windows\\System32\\**"
     - "**/.env"
     - "**/.ssh/**"
+    - "**/.aws/credentials"
 ```
 
-### patterns.yaml
+### patterns.yaml — 检测规则（43 条）
 
-定义安全检测规则：
+覆盖：命令注入（14）、路径穿越（6）、凭证泄露（14）、危险代码（9）、SQL 注入、XSS、数据外传
 
-```yaml
-command_injection:
-  - {pattern: '\$\([^)]+\)', severity: high}
-
-credentials:
-  - {pattern: '(?i)api[_-]?key\s*[:=]\s*[\w\-]{20,}', severity: critical}
-```
-
-## 使用
-
-### 白名单管理
+## 白名单管理
 
 ```bash
-# 列出所有白名单条目
-python hooks/whitelist_manager.py list
-
-# 添加白名单条目
-python hooks/whitelist_manager.py add Bash "*git status*" --reason "Safe command"
-
-# 删除白名单条目
-python hooks/whitelist_manager.py remove allow-1
+python hooks/whitelist_manager.py list                              # 列出
+python hooks/whitelist_manager.py add Bash "git status" --reason "Safe"  # 添加
+python hooks/whitelist_manager.py remove allow-1                    # 删除
 ```
 
-### 查看日志
+## 工具集
 
-```bash
-# 查看安全事件日志
-cat logs/security_events.jsonl
+| 工具 | 用途 |
+|------|------|
+| `hooks/validate_config.py` | 验证所有配置文件格式 |
+| `hooks/check_integrity.py` | SHA256 完整性校验 |
+| `hooks/cleanup_logs.py` | 日志清理和轮转 |
+| `monitor_ui.py` | 实时终端监控 UI |
 
-# 查看最近10条
-tail -n 10 logs/security_events.jsonl
+## 架构
 
-# 查看被拒绝的操作
-grep '"decision": "deny"' logs/security_events.jsonl
+### Pipeline 执行流程
+
+```
+Claude Code Tool Call
+    ↓
+PreToolUse Hook → stdin JSON {tool_name, tool_input}
+    ↓
+白名单快速放行检查
+    ↓
+SecurityPipeline.execute()
+    ├── Layer 1: InputValidator    (规范化 + 注入检测)
+    ├── Layer 2: PermissionChecker (命令白名单 + 路径黑名单)
+    ├── Layer 3: PatternDetector   (43 条正则模式匹配)
+    ├── Layer 4: ContentScanner    (凭证泄露 + 数据外传)
+    └── Layer 5: AuditLogger       (JSONL 日志记录)
+    ↓
+exit 0 (允许) / exit 2 (拒绝)
+```
+
+### 文件结构
+
+```
+skill-jiankong/
+├── hooks/
+│   ├── hooks.json                 # Hook 配置入口
+│   ├── security_check.py          # 主入口（Pipeline 调度）
+│   ├── post_write_check.py        # PostToolUse 写入验证
+│   ├── whitelist_manager.py       # 白名单 CLI
+│   ├── validate_config.py         # 配置验证
+│   ├── check_integrity.py         # 完整性校验
+│   ├── cleanup_logs.py            # 日志清理
+│   ├── core/
+│   │   ├── pipeline.py            # SecurityPipeline 管道
+│   │   ├── models.py              # HookInput, ValidationResult
+│   │   └── config_loader.py       # 配置加载（带缓存）
+│   ├── validators/
+│   │   ├── base.py                # BaseValidator 抽象基类
+│   │   ├── input_validator.py     # Layer 1: 输入验证
+│   │   ├── permission_checker.py  # Layer 2: 权限控制
+│   │   ├── pattern_detector.py    # Layer 3: 模式检测
+│   │   ├── content_scanner.py     # Layer 4: 内容扫描
+│   │   └── audit_logger.py        # Layer 5: 审计日志
+│   └── config/
+│       ├── permissions.yaml       # 权限规则
+│       ├── patterns.yaml          # 检测模式（43条）
+│       └── whitelist.json         # 白名单数据
+├── tests/
+│   └── test_hooks.py              # 61 个测试用例
+├── monitor_ui.py                  # 实时监控终端 UI
+├── requirements.txt               # PyYAML + rich
+├── CHANGELOG.md
+├── LICENSE
+└── README.md
 ```
 
 ## 测试
 
 ```bash
-# 运行所有测试
-python -m pytest tests/
-
-# 运行特定测试
-python -m pytest tests/test_hooks.py -v
+python tests/test_hooks.py
 ```
 
-## 工作原理
-
-### Hook执行流程
-
-```
-Claude Code Tool Call
-    ↓
-PreToolUse Hook触发
-    ↓
-从stdin读取JSON（tool_name, tool_input）
-    ↓
-检查白名单
-    ↓
-Layer 1: 输入验证（命令注入、路径穿越）
-    ↓
-Layer 2: 权限检查（命令白名单）
-    ↓
-Layer 3: 模式检测（危险命令序列）
-    ↓
-Layer 4: 内容扫描（凭证、危险代码）
-    ↓
-Layer 5: 审计日志
-    ↓
-返回决策（exit 0=允许, exit 2=拒绝）
-```
-
-### 安全策略
-
-- **fail-closed**: 配置加载失败时拒绝执行
-- **规范化预处理**: URL解码、大小写规范化防止绕过
-- **多层检测**: 正则+语义分析双重验证
-- **审计追踪**: 所有操作记录到JSON Lines日志
-
-## 文件结构
-
-```
-skill-jiankong/
-├── hooks/
-│   ├── hooks.json                 # Hook配置
-│   ├── security_check.py          # 主检测脚本
-│   ├── post_write_check.py        # PostToolUse检查
-│   ├── whitelist_manager.py       # 白名单管理CLI
-│   └── config/
-│       ├── permissions.yaml       # 权限配置
-│       ├── patterns.yaml          # 检测规则
-│       └── whitelist.json         # 白名单数据
-├── logs/
-│   ├── security_events.jsonl      # 安全事件日志
-│   └── post_tool_events.jsonl     # PostToolUse日志
-├── tests/
-│   └── test_hooks.py              # 测试用例
-├── requirements.txt
-└── README.md
-```
-
-## 常见问题
-
-### Q: Hook没有被触发？
-
-A: 检查以下几点：
-1. 确认hooks.json在正确位置
-2. 确认Python脚本有执行权限
-3. 查看Claude Code日志是否有错误
-
-### Q: 所有操作都被拒绝？
-
-A: 可能是配置文件加载失败（fail-closed策略）：
-1. 检查permissions.yaml和patterns.yaml格式
-2. 确认PyYAML已安装
-3. 查看stderr输出的错误信息
-
-### Q: 如何临时禁用监控？
-
-A: 重命名hooks.json：
-```bash
-mv hooks/hooks.json hooks/hooks.json.disabled
-```
+61 个测试覆盖：原始功能（8）、五层单元测试（36）、边界条件（10）、白名单（3）、配置容错（2）、性能（2）。
 
 ## 版本规划
 
-- **v0.1 (当前)**: 纯hook脚本，基于规则检测
-- **v0.2**: 引入daemon，SQLite持久化，Windows通知
-- **v0.3**: Web dashboard，实时监控
-- **v1.0**: ML异常检测，自适应学习
-
-## 贡献
-
-欢迎提交Issue和Pull Request！
+- **v0.1** ✅ 纯 hook 脚本，基于规则检测，8 个测试
+- **v0.2** ✅ 模块化 Pipeline，监控 UI，61 个测试，43 条检测规则
+- **v0.3** 🔲 Web dashboard，事件关联分析
+- **v1.0** 🔲 ML 异常检测，自适应学习
 
 ## 许可证
 
 MIT License
 
-## 联系方式
+## 链接
 
-- GitHub: [项目地址]
-- Issues: [问题追踪]
+- [GitHub](https://github.com/jiangdehongchina-ui/claude-skill-security-monitor)
+- [Changelog](CHANGELOG.md)
+- [安全改进报告](SECURITY_IMPROVEMENTS.md)
+- [测试报告](TEST_REPORT.md)

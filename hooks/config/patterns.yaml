@@ -20,6 +20,28 @@ command_injection:
   - pattern: '\$\{[^}]+\}'
     severity: medium
     description: "Variable expansion"
+  # 新增：高级注入检测
+  - pattern: 'base64\s+(--)?decode'
+    severity: high
+    description: "Base64 decode execution"
+  - pattern: 'curl\s+.*\|\s*(ba)?sh'
+    severity: critical
+    description: "Curl pipe to shell"
+  - pattern: 'wget\s+.*-O\s*-\s*\|'
+    severity: high
+    description: "Wget pipe to command"
+  - pattern: 'nc\s+-[elp]'
+    severity: critical
+    description: "Netcat listener/reverse shell"
+  - pattern: '/dev/tcp/'
+    severity: critical
+    description: "Bash TCP device"
+  - pattern: 'mkfifo\s+'
+    severity: high
+    description: "Named pipe creation (reverse shell)"
+  - pattern: 'python[23]?\s+-c\s+'
+    severity: medium
+    description: "Python inline execution"
 
 path_traversal:
   - pattern: '\.\.[/\\]'
@@ -34,6 +56,13 @@ path_traversal:
   - pattern: '\.\.\\|\.\./'
     severity: high
     description: "Directory traversal"
+  # 新增：编码绕过检测
+  - pattern: '%2e%2e[/\\%]'
+    severity: high
+    description: "URL-encoded traversal"
+  - pattern: '\\\\[^\\]+\\'
+    severity: high
+    description: "UNC path access"
 
 credentials:
   - pattern: '(?i)(api[_-]?key|apikey)\s*[:=]\s*[\w\-]{20,}'
@@ -54,6 +83,31 @@ credentials:
   - pattern: 'AKIA[0-9A-Z]{16}'
     severity: critical
     description: "AWS access key"
+  # 新增：云服务凭证
+  - pattern: 'ghp_[A-Za-z0-9_]{36}'
+    severity: critical
+    description: "GitHub personal access token"
+  - pattern: 'sk-[A-Za-z0-9]{48,}'
+    severity: critical
+    description: "OpenAI API key"
+  - pattern: 'sk-ant-[A-Za-z0-9\-_]{40,}'
+    severity: critical
+    description: "Anthropic API key"
+  - pattern: 'xox[bp]-[0-9]{10,}'
+    severity: critical
+    description: "Slack token"
+  - pattern: 'SG\.[A-Za-z0-9_\-]{22}\.'
+    severity: critical
+    description: "SendGrid API key"
+  - pattern: 'AIza[A-Za-z0-9_\-]{35}'
+    severity: critical
+    description: "Google API key"
+  - pattern: 'mongodb(\+srv)?://[^:]+:[^@]+@'
+    severity: critical
+    description: "MongoDB connection string with password"
+  - pattern: 'postgres://[^:]+:[^@]+@'
+    severity: critical
+    description: "PostgreSQL connection string with password"
 
 dangerous_code:
   - pattern: '\beval\s*\('
@@ -77,6 +131,13 @@ dangerous_code:
   - pattern: 'pickle\.loads?\s*\('
     severity: high
     description: "Pickle deserialization"
+  # 新增
+  - pattern: 'yaml\.load\s*\([^)]*\)'
+    severity: medium
+    description: "Unsafe YAML load (use safe_load)"
+  - pattern: 'marshal\.loads?\s*\('
+    severity: high
+    description: "Marshal deserialization"
 
 sql_injection:
   - pattern: "' OR '1'='1"
@@ -91,6 +152,13 @@ sql_injection:
   - pattern: "' OR 1=1--"
     severity: critical
     description: "SQL comment injection"
+  # 新增
+  - pattern: "(?i)WAITFOR\\s+DELAY"
+    severity: high
+    description: "SQL time-based injection"
+  - pattern: "(?i)BENCHMARK\\s*\\("
+    severity: high
+    description: "MySQL benchmark injection"
 
 xss:
   - pattern: '<script[^>]*>'
@@ -108,3 +176,24 @@ xss:
   - pattern: '\.innerHTML\s*='
     severity: medium
     description: "innerHTML assignment"
+  # 新增
+  - pattern: '<svg[^>]*onload'
+    severity: high
+    description: "SVG XSS"
+  - pattern: '<img[^>]*onerror'
+    severity: high
+    description: "Image error handler XSS"
+
+data_exfiltration:
+  - pattern: 'curl\s+.*--data.*@'
+    severity: high
+    description: "Curl uploading file content"
+  - pattern: 'curl\s+.*-F\s+.*@'
+    severity: high
+    description: "Curl form file upload"
+  - pattern: 'scp\s+.*@.*:'
+    severity: high
+    description: "SCP file transfer"
+  - pattern: 'rsync\s+.*@.*:'
+    severity: high
+    description: "Rsync remote transfer"
